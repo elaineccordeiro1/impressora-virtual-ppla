@@ -40,3 +40,6 @@ vem carregado.
 ## Stack
 
 HTML + CSS + JavaScript puro. Sem build, sem dependências, sem servidor.
+
+<img width="1272" height="538" alt="image" src="https://github.com/user-attachments/assets/dff01b08-fbe7-4ef6-b478-be2450de4418" />
+
