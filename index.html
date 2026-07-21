@@ -1,0 +1,351 @@
+<title>Impressora Virtual PPLA</title>
+<style>
+:root{
+  --bg:#F2F0EC; --surface:#FFFFFF; --ink:#26241F; --muted:#6E6A61;
+  --accent:#C4700D; --border:#DDD9D1; --chip:#EDEAE3;
+  --paper:#FDFDFB; --paper-ink:#1A1A1C; --paper-shadow:rgba(40,35,25,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#17181A; --surface:#212327; --ink:#E8E6E1; --muted:#9B978F;
+         --accent:#E8940F; --border:#34363B; --chip:#2A2C31; --paper-shadow:rgba(0,0,0,.5); }
+}
+:root[data-theme="dark"]{ --bg:#17181A; --surface:#212327; --ink:#E8E6E1; --muted:#9B978F;
+  --accent:#E8940F; --border:#34363B; --chip:#2A2C31; --paper-shadow:rgba(0,0,0,.5); }
+:root[data-theme="light"]{ --bg:#F2F0EC; --surface:#FFFFFF; --ink:#26241F; --muted:#6E6A61;
+  --accent:#C4700D; --border:#DDD9D1; --chip:#EDEAE3; --paper-shadow:rgba(40,35,25,.18); }
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:20px}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:19px;font-weight:650;margin:0;letter-spacing:-.2px}
+header .sub{color:var(--muted);font-size:13px}
+.wrap{display:grid;grid-template-columns:minmax(300px,430px) 1fr;gap:20px;align-items:start}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px}
+.panel h2{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 10px}
+textarea{width:100%;height:300px;resize:vertical;background:var(--bg);color:var(--ink);
+  border:1px solid var(--border);border-radius:4px;padding:10px;
+  font:12px/1.6 Consolas,ui-monospace,monospace;white-space:pre;overflow:auto}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.actions{display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap}
+button{background:var(--accent);color:#fff;border:0;border-radius:4px;
+  padding:8px 16px;font:600 13px "Segoe UI",sans-serif;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+#log{margin-top:14px;font:12px/1.7 Consolas,ui-monospace,monospace;max-height:340px;overflow:auto}
+#log .rec{display:flex;gap:8px;padding:2px 0;border-bottom:1px dotted var(--border)}
+#log .t{flex:0 0 62px;color:var(--accent);font-weight:600}
+#log .pos{flex:0 0 84px;color:var(--muted)}
+#log .ign .t{color:var(--muted);font-weight:400}
+
+.stage{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.stage-tools{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:12px}
+#holder{overflow:auto;max-width:100%;padding:26px 8px 8px 30px;position:relative}
+#labelbox{position:relative;transform-origin:top left}
+#label{position:relative;background:var(--paper);color:var(--paper-ink);
+  box-shadow:0 3px 14px var(--paper-shadow);border-radius:3px;overflow:hidden}
+#label .el{position:absolute;white-space:nowrap;line-height:1;
+  font-family:"Arial Narrow","Liberation Sans Narrow",sans-serif;
+  font-stretch:condensed;letter-spacing:-.03em;font-weight:600;color:var(--paper-ink)}
+#label .rule{position:absolute;background:var(--paper-ink)}
+#label .bars{position:absolute;
+  background:repeating-linear-gradient(90deg,var(--paper-ink) 0 2px,transparent 2px 5px)}
+#label .fig{position:absolute;border:1.5px dashed #999;color:#999;display:flex;
+  align-items:center;justify-content:center;font:600 10px "Segoe UI",sans-serif;border-radius:2px}
+#label canvas{position:absolute}
+.ruler{position:absolute;color:var(--muted);font:10px Consolas,monospace}
+.note{color:var(--muted);font-size:12px;max-width:62ch}
+kbd{background:var(--chip);border:1px solid var(--border);border-radius:3px;padding:0 5px;font:11px Consolas,monospace}
+</style>
+
+<header>
+  <h1>Impressora Virtual PPLA</h1>
+  <span class="sub">visualizador de spool de etiquetas térmicas PPLA (Argox / Datamax) — 203&nbsp;dpi</span>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <h2>Spool (.lst) — cole o conteúdo e renderize</h2>
+    <textarea id="src" spellcheck="false"></textarea>
+    <div class="actions">
+      <button id="go">Renderizar etiqueta</button>
+      <button id="rot" class="ghost">Girar 90°</button>
+    </div>
+    <div id="log"></div>
+  </div>
+
+  <div class="panel stage">
+    <h2>Etiqueta — 118 × 59 mm (escala aproximada)</h2>
+    <div class="stage-tools">Passe o mouse sobre um elemento para ver o registro de origem.</div>
+    <div id="holder"><div id="labelbox"><div id="label"></div></div></div>
+    <p class="note">Posições e fontes são aproximadas — a figura do produto não é desenhada.
+    <strong>O QR Code é real:</strong> gerado com o mesmo conteúdo que a impressora codificaria
+    (byte mode, correção M) — dá para bipar direto na tela com o leitor 2D ou a câmera do celular
+    e conferir o retorno <kbd>item|quantidade</kbd>. Comandos de sistema
+    (<kbd>n</kbd>, <kbd>M1183</kbd>, <kbd>D11</kbd>…) são reconhecidos e ignorados no desenho.</p>
+  </div>
+</div>
+
+<script>
+const DEMO = `n
+M1183
+O0220
+V0
+f322
+D
+L
+D11
+A2
+4911A1801490046UNICA
+1Y1100000200010
+1X1100000070070L001461
+4911A1200160098Quantidade:
+4911A18010901034
+4911A1200160125Grao:
+4911A1800580131UNICA
+4911A1201780125Tipo:
+4911A1802160131UNICA
+4911A1200160155Dimensao:
+4911A1800960161CHAL. ELET. 220 V
+4911A0802520189Codigo:
+4911A10029001912
+4911A0802520227Fabricado:
+4911A1003050229
+4W1d44000060002502|4
+4911A06007602312|4
+1X1100000070238L001461
+4911A1000160260Cliente:
+4911A1000690260DEPOSITANTE DEMONSTRACAO
+4911A1000160283Cidade:
+4911A1000690283JOINVILLE - SC
+4911A1000160305Ped. Cliente:
+4911A10010203051
+4911A1000160329Cod. Item Cliente:
+4911A1001390329
+4911A1000160351Seq. Item:
+4911A10008803510
+1X1100000080358L001461
+4911A0600070378DEMONSTRACAO TESTE  CNPJ 061.144.671/0001-10  Industria Brasileira     SAC (47)30258833
+Q0001
+E`;
+
+const S = 0.78;                    // px por ponto (203dpi -> 1 ponto = 0,125mm)
+const LABEL_W = 945, LABEL_H = 470; // pontos (118 x 59 mm)
+let rotated = false;
+
+const el = id => document.getElementById(id);
+const px = d => Math.round(d*S);
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function render(){
+  const label = el('label'), log = el('log');
+  label.innerHTML=''; log.innerHTML='';
+  label.style.width  = px(LABEL_W)+'px';
+  label.style.height = px(LABEL_H)+'px';
+  addRulers();
+
+  const lines = el('src').value.split(/\r?\n/);
+  lines.forEach((raw,idx)=>{
+    const line = raw.replace(/[\x00-\x08\x0E-\x1F]/g,'');   // descarta bytes de controle colados
+    if(!line.trim()){ return; }
+    let m;
+
+    if(m = line.match(/^([1-4])9(\d)(\d)A(\d{2})(\d{4})(\d{4})(.*)$/)){          // texto
+      const [,rot,,,size,row,col,txt] = m;
+      if(!txt){ addLog('texto',row,col,'(vazio)',true); return; }
+      const d = mk('el', +row, +col);
+      const fpx = Math.max(7, Math.round(+size*1.05));
+      d.style.fontSize = fpx+'px';
+      d.style.top = (px(+col)-fpx)+'px';   // ancora pela linha de base, como a impressora
+      d.textContent = txt;
+      d.title = `linha ${idx+1}: ${line}`;
+      label.appendChild(d);
+      addLog('texto',row,col,txt);
+
+    } else if(m = line.match(/^([1-4])X\d{2}(\d{3})(\d{4})(\d{4})L(\d{3})(\d{3})$/)){  // linha
+      const [,,,row,col,,len] = m;
+      const d = mk('rule', +row, +col);
+      d.style.width = px(+len*2)+'px'; d.style.height='2px';
+      d.title = `linha ${idx+1}: ${line}`;
+      label.appendChild(d);
+      addLog('separador',row,col,'—');
+
+    } else if(m = line.match(/^([1-4])e(\d)(\d)(\d{3})(\d{4})(\d{4})([A-C])(.*)$/)){    // code 128
+      const [,,wide,narrow,h,row,col,sub,data] = m;
+      const modules = (data.length+3)*11+2;
+      const d = mk('bars', +row, (+col)-(+h));
+      d.style.width = px(modules*(+narrow))+'px';
+      d.style.height = px(+h)+'px';
+      d.title = `linha ${idx+1}: Code128-${sub} "${data}"`;
+      label.appendChild(d);
+      addLog('code128',row,col,data);
+
+    } else if(m = line.match(/^([1-4])W1[dD](\d)(\d)(\d{3})(\d{4})(\d{4})(.*)$/)){      // qr
+      const [,,cw,,,row,col,data] = m;
+      const M = qrMatrix(data);
+      const c = document.createElement('canvas');
+      if(M){
+        const n=M.length, quiet=2, cell=Math.max(2,Math.round(+cw*S));
+        c.width=c.height=(n+quiet*2)*cell;
+        const g=c.getContext('2d');
+        g.fillStyle='#FDFDFB'; g.fillRect(0,0,c.width,c.height);
+        g.fillStyle='#1A1A1C';
+        for(let y=0;y<n;y++)for(let x=0;x<n;x++)
+          if(M[y][x]) g.fillRect((x+quiet)*cell,(y+quiet)*cell,cell,cell);
+        c.title = `linha ${idx+1}: QR real "${data}" (v${(n-17)/4}, célula ${cw} pontos) — pode bipar na tela`;
+      } else {
+        c.width=c.height=px(25*(+cw));
+        const g=c.getContext('2d');
+        g.fillStyle='#EEE'; g.fillRect(0,0,c.width,c.height);
+        c.title = `linha ${idx+1}: QR "${data}" (dado longo demais para o simulador)`;
+      }
+      c.className='qr';
+      c.style.left=px(+row)+'px'; c.style.top=px(+col)+'px';
+      label.appendChild(c);
+      addLog('qrcode',row,col,(data||'(vazio)')+'  ← conteúdo real do QR');
+
+    } else if(m = line.match(/^([1-4])Y\d{2}(\d{3})(\d{4})(\d{4})(.*)$/)){              // imagem
+      const [,,,row,col,name] = m;
+      if(name.trim()){
+        const d = mk('fig', +row, +col);
+        d.style.width=px(220)+'px'; d.style.height=px(150)+'px';
+        d.textContent='FIGURA: '+name.trim();
+        label.appendChild(d);
+        addLog('figura',row,col,name.trim());
+      } else {
+        addLog('figura',row,col,'(sem nome — ignorada)',true);
+      }
+
+    } else if(/^(n|M\d+|O\d+|V\d+|f\d+|D|L|D11|A2|Q\d*|E)$/.test(line.trim())){
+      addLog('sistema','','',line.trim(),true);
+    } else {
+      addLog('?','','',line,true);
+    }
+  });
+  applyRotation();
+}
+
+function mk(cls,row,col){
+  const d=document.createElement('div');
+  d.className=cls; d.style.left=px(row)+'px'; d.style.top=px(col)+'px';
+  return d;
+}
+
+function addLog(tipo,row,col,txt,ign){
+  const d=document.createElement('div');
+  d.className='rec'+(ign?' ign':'');
+  d.innerHTML=`<span class="t">${tipo}</span><span class="pos">${row?`x${row} y${col}`:''}</span><span>${esc(txt)}</span>`;
+  el('log').appendChild(d);
+}
+
+// ---- Codificador QR real: byte mode, ECC M, versoes 1-3, mascara 0 ----
+function qrMatrix(data){
+  const bytes=[...(data||' ')].map(ch=>ch.charCodeAt(0)&0xFF);
+  const CAP={1:14,2:26,3:42}, TOT={1:26,2:44,3:70}, ECC={1:10,2:16,3:26};
+  let ver=1; while(ver<=3 && bytes.length>CAP[ver]) ver++;
+  if(ver>3) return null;
+  const size=17+4*ver, eccN=ECC[ver], dataCW=TOT[ver]-eccN;
+
+  const bits=[]; const push=(v,n)=>{for(let i=n-1;i>=0;i--)bits.push((v>>>i)&1)};
+  push(4,4); push(bytes.length,8); bytes.forEach(b=>push(b,8));
+  push(0,Math.min(4,dataCW*8-bits.length));
+  while(bits.length%8) bits.push(0);
+  const cw=[]; for(let i=0;i<bits.length;i+=8){let v=0;for(let j=0;j<8;j++)v=(v<<1)|bits[i+j];cw.push(v)}
+  const pads=[0xEC,0x11]; let pi=0; while(cw.length<dataCW) cw.push(pads[pi++ %2]);
+
+  const EXP=new Array(512),LOG=new Array(256);
+  {let x=1; for(let i=0;i<255;i++){EXP[i]=x;LOG[x]=i;x<<=1;if(x&0x100)x^=0x11D}
+   for(let i=255;i<512;i++)EXP[i]=EXP[i-255];}
+  const gmul=(a,b)=>(a&&b)?EXP[LOG[a]+LOG[b]]:0;
+  let gen=[1];
+  for(let i=0;i<eccN;i++){
+    const ng=new Array(gen.length+1).fill(0);
+    for(let j=0;j<gen.length;j++){ ng[j]^=gmul(gen[j],EXP[i]); ng[j+1]^=gen[j]; }
+    gen=ng;
+  }
+  const rem=new Array(eccN).fill(0);
+  for(const b of cw){
+    const f=b^rem[0]; rem.shift(); rem.push(0);
+    if(f) for(let i=0;i<eccN;i++) rem[i]^=gmul(gen[i+1],f);
+  }
+  const allCW=cw.concat(rem);
+
+  const M=Array.from({length:size},()=>Array(size).fill(null));
+  const setF=(x,y,v)=>{ if(x>=0&&x<size&&y>=0&&y<size) M[y][x]=v?1:0; };
+  const finder=(fx,fy)=>{ for(let dy=-1;dy<=7;dy++)for(let dx=-1;dx<=7;dx++){
+      const x=fx+dx,y=fy+dy; if(x<0||x>=size||y<0||y>=size)continue;
+      const inF=dx>=0&&dx<=6&&dy>=0&&dy<=6;
+      const on=inF&&(dx===0||dx===6||dy===0||dy===6||(dx>=2&&dx<=4&&dy>=2&&dy<=4));
+      M[y][x]=on?1:0; } };
+  finder(0,0); finder(size-7,0); finder(0,size-7);
+  for(let i=8;i<size-8;i++){ setF(i,6,i%2===0); setF(6,i,i%2===0); }
+  if(ver>=2){ const c0=4*ver+10;
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)
+      setF(c0+dx,c0+dy,Math.max(Math.abs(dx),Math.abs(dy))!==1);
+  }
+  setF(8,size-8,1);
+  const FMT={1:'101010000010010'}[1];              // ECC M, mascara 0 (MSB primeiro)
+  const fb=i=>+FMT[14-i];                          // bit i = LSB
+  for(let i=0;i<=5;i++) setF(8,i,fb(i));
+  setF(8,7,fb(6)); setF(8,8,fb(7)); setF(7,8,fb(8));
+  for(let i=9;i<15;i++) setF(14-i,8,fb(i));
+  for(let i=0;i<8;i++) setF(size-1-i,8,fb(i));
+  for(let i=8;i<15;i++) setF(8,size-15+i,fb(i));
+
+  let k=0; const total=allCW.length*8;
+  const getBit=i=> i<total ? (allCW[i>>3]>>(7-(i&7)))&1 : 0;
+  for(let right=size-1; right>=1; right-=2){
+    if(right===6) right=5;
+    for(let vert=0; vert<size; vert++){
+      for(let j=0;j<2;j++){
+        const x=right-j;
+        const up=((right+1)&2)===0;
+        const y=up? size-1-vert : vert;
+        if(M[y][x]===null){
+          let b=getBit(k++);
+          if((x+y)%2===0) b^=1;                    // mascara 0
+          M[y][x]=b;
+        }
+      }
+    }
+  }
+  return M;
+}
+
+function addRulers(){
+  const holder=el('holder');
+  holder.querySelectorAll('.ruler').forEach(r=>r.remove());
+  for(let mm=0; mm<=110; mm+=20){
+    const r=document.createElement('span');
+    r.className='ruler'; r.textContent=mm;
+    r.style.left=(30+mm*8*S)+'px'; r.style.top='8px';
+    holder.appendChild(r);
+  }
+  for(let mm=0; mm<=50; mm+=10){
+    const r=document.createElement('span');
+    r.className='ruler'; r.textContent=mm;
+    r.style.left='6px'; r.style.top=(24+mm*8*S)+'px';
+    holder.appendChild(r);
+  }
+}
+
+function applyRotation(){
+  const box=el('labelbox');
+  if(rotated){
+    box.style.transform=`rotate(90deg) translateY(-${px(LABEL_H)}px)`;
+    box.style.height=px(LABEL_W)+'px'; box.style.width=px(LABEL_H)+'px';
+  } else {
+    box.style.transform=''; box.style.width=px(LABEL_W)+'px'; box.style.height=px(LABEL_H)+'px';
+  }
+}
+
+el('go').onclick=render;
+el('rot').onclick=()=>{ rotated=!rotated; applyRotation(); };
+el('src').value=DEMO;
+render();
+</script>
