@@ -205,7 +205,8 @@ function render(){
         c.title = `linha ${idx+1}: QR "${data}" (dado longo demais para o simulador)`;
       }
       c.className='qr';
-      c.style.left=px(+row)+'px'; c.style.top=px(+col)+'px';
+      // W1d nao obedece a rotacao dos demais registros: rrrr = avanco do papel (y), cccc = largura (x)
+      c.style.left=px(+col)+'px'; c.style.top=px(+row)+'px';
       label.appendChild(c);
       addLog('qrcode',row,col,(data||'(vazio)')+'  ← conteúdo real do QR');
 
