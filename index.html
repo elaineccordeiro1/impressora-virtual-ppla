@@ -79,7 +79,7 @@ kbd{background:var(--chip);border:1px solid var(--border);border-radius:3px;padd
   </div>
 
   <div class="panel stage">
-    <h2>Etiqueta — 118 × 59 mm (escala aproximada)</h2>
+    <h2>Etiqueta — 118 × 104 mm (escala aproximada)</h2>
     <div class="stage-tools">Passe o mouse sobre um elemento para ver o registro de origem.</div>
     <div id="holder"><div id="labelbox"><div id="label"></div></div></div>
     <p class="note">Posições e fontes são aproximadas — a figura do produto não é desenhada.
@@ -115,7 +115,7 @@ A2
 4911A10029001912
 4911A0802520227Fabricado:
 4911A1003050229
-4W1d44000060002502|4
+4W1d44000029502832|4
 4911A06007602312|4
 1X1100000070238L001461
 4911A1000160260Cliente:
@@ -133,8 +133,9 @@ A2
 Q0001
 E`;
 
-const S = 0.78;                    // px por ponto (203dpi -> 1 ponto = 0,125mm)
-const LABEL_W = 945, LABEL_H = 470; // pontos (118 x 59 mm)
+const S = 1.6;                     // px por unidade de posicao (1 unidade = 0,01 pol = 0,254mm)
+const DOT = S/2.03;                // px por ponto da impressora (alturas/celulas sao em pontos)
+const LABEL_W = 465, LABEL_H = 410; // unidades (118 x 104 mm)
 let rotated = false;
 
 const el = id => document.getElementById(id);
@@ -159,7 +160,7 @@ function render(){
       const [,rot,,,size,row,col,txt] = m;
       if(!txt){ addLog('texto',row,col,'(vazio)',true); return; }
       const d = mk('el', +row, +col);
-      const fpx = Math.max(7, Math.round(+size*1.05));
+      const fpx = Math.max(8, Math.round(+size*2.1));
       d.style.fontSize = fpx+'px';
       d.style.top = (px(+col)-fpx)+'px';   // ancora pela linha de base, como a impressora
       d.textContent = txt;
@@ -170,7 +171,7 @@ function render(){
     } else if(m = line.match(/^([1-4])X\d{2}(\d{3})(\d{4})(\d{4})L(\d{3})(\d{3})$/)){  // linha
       const [,,,row,col,,len] = m;
       const d = mk('rule', +row, +col);
-      d.style.width = px(+len*2)+'px'; d.style.height='2px';
+      d.style.width = px(+len)+'px'; d.style.height='2px';
       d.title = `linha ${idx+1}: ${line}`;
       label.appendChild(d);
       addLog('separador',row,col,'—');
@@ -178,9 +179,10 @@ function render(){
     } else if(m = line.match(/^([1-4])e(\d)(\d)(\d{3})(\d{4})(\d{4})([A-C])(.*)$/)){    // code 128
       const [,,wide,narrow,h,row,col,sub,data] = m;
       const modules = (data.length+3)*11+2;
-      const d = mk('bars', +row, (+col)-(+h));
-      d.style.width = px(modules*(+narrow))+'px';
-      d.style.height = px(+h)+'px';
+      const hU = Math.round(+h/2.03);                  // altura em pontos -> unidades
+      const d = mk('bars', +row, (+col)-hU);
+      d.style.width = Math.round(modules*(+narrow)*DOT)+'px';
+      d.style.height = Math.round(+h*DOT)+'px';
       d.title = `linha ${idx+1}: Code128-${sub} "${data}"`;
       label.appendChild(d);
       addLog('code128',row,col,data);
@@ -190,7 +192,7 @@ function render(){
       const M = qrMatrix(data);
       const c = document.createElement('canvas');
       if(M){
-        const n=M.length, quiet=2, cell=Math.max(2,Math.round(+cw*S));
+        const n=M.length, quiet=2, cell=Math.max(2,Math.round(+cw*DOT));
         c.width=c.height=(n+quiet*2)*cell;
         const g=c.getContext('2d');
         g.fillStyle='#FDFDFB'; g.fillRect(0,0,c.width,c.height);
@@ -205,8 +207,7 @@ function render(){
         c.title = `linha ${idx+1}: QR "${data}" (dado longo demais para o simulador)`;
       }
       c.className='qr';
-      // W1d nao obedece a rotacao dos demais registros: rrrr = avanco do papel (y), cccc = largura (x)
-      c.style.left=px(+col)+'px'; c.style.top=px(+row)+'px';
+      c.style.left=px(+row)+'px'; c.style.top=px(+col)+'px';
       label.appendChild(c);
       addLog('qrcode',row,col,(data||'(vazio)')+'  ← conteúdo real do QR');
 
@@ -321,16 +322,17 @@ function qrMatrix(data){
 function addRulers(){
   const holder=el('holder');
   holder.querySelectorAll('.ruler').forEach(r=>r.remove());
+  const UPMM = 3.937;                              // unidades por mm
   for(let mm=0; mm<=110; mm+=20){
     const r=document.createElement('span');
     r.className='ruler'; r.textContent=mm;
-    r.style.left=(30+mm*8*S)+'px'; r.style.top='8px';
+    r.style.left=(30+mm*UPMM*S)+'px'; r.style.top='8px';
     holder.appendChild(r);
   }
-  for(let mm=0; mm<=50; mm+=10){
+  for(let mm=0; mm<=100; mm+=20){
     const r=document.createElement('span');
     r.className='ruler'; r.textContent=mm;
-    r.style.left='6px'; r.style.top=(24+mm*8*S)+'px';
+    r.style.left='6px'; r.style.top=(24+mm*UPMM*S)+'px';
     holder.appendChild(r);
   }
 }
