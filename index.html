@@ -64,7 +64,7 @@ kbd{background:var(--chip);border:1px solid var(--border);border-radius:3px;padd
 
 <header>
   <h1>Impressora Virtual PPLA</h1>
-  <span class="sub">visualizador de spool de etiquetas térmicas PPLA (Argox / Datamax) — 203&nbsp;dpi</span>
+  <span class="sub">visualizador de spool de etiquetas térmicas PPLA (Argox / Datamax) — Argox 203&nbsp;dpi</span>
 </header>
 
 <div class="wrap">
@@ -74,6 +74,9 @@ kbd{background:var(--chip);border:1px solid var(--border);border-radius:3px;padd
     <div class="actions">
       <button id="go">Renderizar etiqueta</button>
       <button id="rot" class="ghost">Girar 90°</button>
+      <label style="font-size:12px;color:var(--muted);display:flex;gap:5px;align-items:center">
+        <input type="checkbox" id="dosfix" checked> Corrigir acentos (spool DOS/CP850)
+      </label>
     </div>
     <div id="log"></div>
   </div>
@@ -143,6 +146,14 @@ const px = d => Math.round(d*S);
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
+// spool DOS (CP850) visto como Windows-1252: desfaz a troca dos acentos mais comuns (pt-BR)
+const DOSFIX = {'Æ':'ã','Ç':'Ã','¢':'ó','£':'ú','¡':'í','‚':'é','ƒ':'â','…':'à','‡':'ç',
+                'ˆ':'ê','‰':'ë','Š':'è','“':'ô','ä':'õ','å':'Õ','€':'Ç','à':'Ó','é':'Ú','Ö':'Í','Ò':'Ê'};
+function fixDos(s){
+  if(!el('dosfix').checked) return s;
+  return s.replace(/[ÆÇ¢£¡‚ƒ…‡ˆ‰Š“äåà€éÖÒ]/g, ch => DOSFIX[ch] || ch);
+}
+
 function render(){
   const label = el('label'), log = el('log');
   label.innerHTML=''; log.innerHTML='';
@@ -163,10 +174,10 @@ function render(){
       const fpx = Math.max(8, Math.round(+size*2.1));
       d.style.fontSize = fpx+'px';
       d.style.top = (px(+col)-fpx)+'px';   // ancora pela linha de base, como a impressora
-      d.textContent = txt;
+      d.textContent = fixDos(txt);
       d.title = `linha ${idx+1}: ${line}`;
       label.appendChild(d);
-      addLog('texto',row,col,txt);
+      addLog('texto',row,col,fixDos(txt));
 
     } else if(m = line.match(/^([1-4])X\d{2}(\d{3})(\d{4})(\d{4})L(\d{3})(\d{3})$/)){  // linha
       const [,,,row,col,,len] = m;
@@ -349,6 +360,7 @@ function applyRotation(){
 
 el('go').onclick=render;
 el('rot').onclick=()=>{ rotated=!rotated; applyRotation(); };
+el('dosfix').onchange=render;
 el('src').value=DEMO;
 render();
 </script>
