@@ -118,7 +118,7 @@ A2
 4911A10029001912
 4911A0802520227Fabricado:
 4911A1003050229
-4W1d44000029502832|4
+4W1d44000037003482|4
 4911A06007602312|4
 1X1100000070238L001461
 4911A1000160260Cliente:
@@ -218,7 +218,8 @@ function render(){
         c.title = `linha ${idx+1}: QR "${data}" (dado longo demais para o simulador)`;
       }
       c.className='qr';
-      c.style.left=px(+row)+'px'; c.style.top=px(+col)+'px';
+      // rotacao 4: a ancora do W1d e o canto inferior-direito (cresce p/ cima e p/ esquerda)
+      c.style.left=(px(+row)-c.width)+'px'; c.style.top=(px(+col)-c.height)+'px';
       label.appendChild(c);
       addLog('qrcode',row,col,(data||'(vazio)')+'  ← conteúdo real do QR');
 
